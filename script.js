@@ -47,12 +47,14 @@ langSelect.value = savedLang;
 applyTranslations(savedLang);
 
 // --- load saved weather (if any) AFTER applying translations ---
-document.addEventListener("DOMContentLoaded", () => {
+document.addEventListener("DOMContentLoaded", async () => {
   const weatherJson = localStorage.getItem("weather");
   const data = weatherJson ? JSON.parse(weatherJson) : null;
 
   if (data) {
     showWeather(data);
+  } else {
+    await getGeoWeather();
   }
 });
 
@@ -77,7 +79,22 @@ weatherBtn.onclick = async () => {
   }
 };
 
-geoWeatherBtn.onclick = async () => {
+geoWeatherBtn.onclick = async () => await getGeoWeather();
+
+langSelect.onchange = () => {
+  const selectedLang = langSelect.value;
+  applyTranslations(selectedLang);
+  localStorage.setItem("weatherLang", selectedLang);
+
+  // Если погодные данные сейчас показываются — перерисовать их с новыми метками
+  const currentWeatherJson = localStorage.getItem("weather");
+  if (currentWeatherJson) {
+    const currentData = JSON.parse(currentWeatherJson);
+    showWeather(currentData);
+  }
+};
+
+async function getGeoWeather() {
   try {
     const position = await new Promise((resolve, reject) => {
       navigator.geolocation.getCurrentPosition(resolve, reject);
@@ -92,20 +109,7 @@ geoWeatherBtn.onclick = async () => {
   } catch (error) {
     handleError(error);
   }
-};
-
-langSelect.onchange = () => {
-  const selectedLang = langSelect.value;
-  applyTranslations(selectedLang);
-  localStorage.setItem("weatherLang", selectedLang);
-
-  // Если погодные данные сейчас показываются — перерисовать их с новыми метками
-  const currentWeatherJson = localStorage.getItem("weather");
-  if (currentWeatherJson) {
-    const currentData = JSON.parse(currentWeatherJson);
-    showWeather(currentData);
-  }
-};
+}
 
 // --- helper: fetch wrapper ---
 async function fetchWeather(url) {
