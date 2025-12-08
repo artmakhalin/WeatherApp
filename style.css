@@ -1,0 +1,115 @@
+/* GLOBAL RESET */
+* {
+  box-sizing: border-box;
+}
+
+body {
+  font-family: Arial, sans-serif;
+  min-height: 100vh;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  color: #ffffff;
+  transition: background-image 1.2s ease-in-out;
+  background-repeat: no-repeat;
+  background-size: cover;
+  background-position: center;
+  position: relative;
+  overflow-x: hidden;
+}
+
+/* ⬇ DARK overlay so text stays readable */
+body::before {
+  content: "";
+  position: fixed;
+  top: 0; left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0,0,0,0.35); 
+  /* backdrop-filter: blur(2px); */
+  z-index: -1;
+}
+
+/* PAGE TITLE */
+h1 {
+  margin-top: 20px;
+  font-weight: 600;
+  text-shadow: 0 2px 6px rgba(0,0,0,0.4);
+}
+
+/* INPUT PANEL GLASS STYLE */
+.city {
+  margin-top: 25px;
+  padding: 20px;
+  background: rgba(255,255,255,0.15);
+  border-radius: 15px;
+  backdrop-filter: blur(6px);
+  display: flex;
+  flex-direction: column;
+  width: 320px;
+  gap: 12px;
+  box-shadow: 0 6px 18px rgba(0,0,0,0.25);
+}
+
+/* TEXT FIELDS */
+label {
+  font-size: 16px;
+  text-shadow: 0 1px 3px rgba(0,0,0,0.4);
+}
+
+input, select {
+  padding: 10px;
+  border-radius: 8px;
+  border: none;
+  outline: none;
+  font-size: 16px;
+  background: rgba(255,255,255,0.85);
+  color: #333;
+  box-shadow: inset 0 2px 5px rgba(0,0,0,0.15);
+}
+
+/* BUTTON */
+button {
+  padding: 10px;
+  background: #0984e3;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 18px;
+  transition: 0.3s;
+}
+button:hover {
+  background: #0c6bd6;
+  transform: scale(1.05);
+}
+
+/* WEATHER CARD */
+.weatherInfo {
+  margin-top: 40px;
+  background: rgba(255,255,255,0.15);
+  padding: 20px;
+  border-radius: 15px;
+  box-shadow: 0 6px 18px rgba(0,0,0,0.25);
+  width: 320px;
+  text-align: center;
+  backdrop-filter: blur(8px);
+  color: #ffffff;
+}
+.weatherInfo h2 {
+  margin-top: 0;
+  text-shadow: 0 2px 6px rgba(0,0,0,0.5);
+}
+
+.weather-icon {
+  width: 130px;
+}
+
+/* MOBILE OPTIMIZATION */
+@media (max-width: 480px) {
+  .city, .weatherInfo {
+    width: 90%;
+  }
+}
