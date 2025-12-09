@@ -207,14 +207,14 @@ function applyTranslations(lang) {
 async function fetchCityImage(city) {
   const url = `https://api.unsplash.com/search/photos?query=${encodeURIComponent(
     city
-  )}&client_id=${UNSPLASH_KEY}&orientation=landscape`;
+  )}&client_id=${UNSPLASH_KEY}&orientation=landscape&fm=jpg`;
 
   const res = await fetch(url);
   const data = await res.json();
 
   if (data.results.length > 0) {
-    return data.results[0].urls.regular; // можно full / raw
+    return data.results[0].urls.regular + "&fm=jpg"; // можно full / raw
   }
 
-  return "https://images.unsplash.com/photo-1503264116251-35a269479413"; // если не нашли
+  return "https://images.unsplash.com/photo-1503264116251-35a269479413&fm=jpg"; // если не нашли
 }
