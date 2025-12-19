@@ -35,6 +35,8 @@ const translations = {
 
 const API_KEY = "c4976700f060276c1c1a1acf39d04ebc";
 const UNSPLASH_KEY = "axiH7uT_DDF77FZFjTsxbw0Qtm0JZXv9dwcfxzwj_jc";
+const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+
 const cityValueInput = document.getElementById("cityValueInput");
 const weatherBtn = document.getElementById("weatherBtn");
 const weatherInfo = document.getElementById("weatherInfo");
@@ -126,7 +128,7 @@ async function fetchWeather(url) {
 // --- showWeather uses translations from current lang ---
 async function showWeather({
   name,
-  weather: [{ icon, description }],
+  weather: [{ icon, description, main }],
   main: { temp, feels_like, humidity },
   wind: { speed },
 }) {
@@ -136,11 +138,17 @@ async function showWeather({
   const t = translations[currentLang] || translations.en;
 
   // ✨ NEW — загрузка фона
-  const photoUrl = await fetchCityImage(name);
+  let query = name;
+  const condition = main.toLowerCase();
+
+  if (condition.includes("rain")) query += " rain city";
+  if (condition.includes("snow")) query += " winter snow";
+  if (condition.includes("cloud")) query += " cloudy skyline";
+  if (condition.includes("clear")) query += " sunny city skyline";
+
+  const photoUrl = await fetchCityImage(query);
   if (photoUrl) {
-    document.body.style.backgroundImage = `url('${photoUrl}')`;
-    document.body.style.backgroundSize = "cover";
-    document.body.style.backgroundPosition = "center";
+    setBackgroundImage(photoUrl);
   }
 
   const h2 = document.createElement("h2");
@@ -217,4 +225,43 @@ async function fetchCityImage(city) {
   }
 
   return "https://images.unsplash.com/photo-1503264116251-35a269479413&fm=jpg"; // если не нашли
+}
+
+function setBackgroundImage(photoUrl) {
+  const safeUrl = `${photoUrl}&fm=jpg&t=${Date.now()}`;
+
+  if (isIOS) {
+    setIOSBackground(safeUrl);
+  } else {
+    document.body.style.backgroundImage = `url('${safeUrl}')`;
+    document.body.style.backgroundSize = "cover";
+    document.body.style.backgroundPosition = "center";
+  }
+}
+
+function setIOSBackground(photoUrl) {
+  let bg = document.getElementById("ios-bg");
+
+  if (!bg) {
+    bg = document.createElement("img");
+    bg.id = "ios-bg";
+
+    bg.style.position = "fixed";
+    bg.style.top = "0";
+    bg.style.left = "0";
+    bg.style.width = "100%";
+    bg.style.height = "100%";
+    bg.style.objectFit = "cover";
+    bg.style.zIndex = "-2";
+    bg.style.transition = "opacity 1s ease";
+    bg.style.opacity = "0";
+
+    document.body.appendChild(bg);
+  }
+
+  bg.onload = () => {
+    bg.style.opacity = "1";
+  };
+
+  bg.src = photoUrl;
 }
