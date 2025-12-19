@@ -1,3 +1,4 @@
+// --- Config ---
 const translations = {
   en: {
     title: "Weather",
@@ -33,6 +34,7 @@ const translations = {
   },
 };
 
+// --- DOM ---
 const API_KEY = "c4976700f060276c1c1a1acf39d04ebc";
 const UNSPLASH_KEY = "axiH7uT_DDF77FZFjTsxbw0Qtm0JZXv9dwcfxzwj_jc";
 const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
@@ -42,44 +44,27 @@ const weatherBtn = document.getElementById("weatherBtn");
 const weatherInfo = document.getElementById("weatherInfo");
 const geoWeatherBtn = document.getElementById("geoWeatherBtn");
 const langSelect = document.getElementById("langSelect");
+const history = document.getElementById("history");
 
-// --- init language from localStorage (or default 'en') ---
+// --- Init language from localStorage (or default 'en') ---
 const savedLang = localStorage.getItem("weatherLang") || "en";
 langSelect.value = savedLang;
 applyTranslations(savedLang);
 
-// --- load saved weather (if any) AFTER applying translations ---
+// --- Load saved weather (if any) AFTER applying translations ---
 document.addEventListener("DOMContentLoaded", async () => {
   const weatherJson = localStorage.getItem("weather");
   const data = weatherJson ? JSON.parse(weatherJson) : null;
 
-  if (data) {
-    showWeather(data);
-  } else {
-    await getGeoWeather();
+  data ? showWeather(data) : await getGeoWeather();
+
+  if (!localStorage.getItem("searchHistory")) {
+    localStorage.setItem("searchHistory", JSON.stringify([]));
   }
 });
 
-// --- events ---
-weatherBtn.onclick = async () => {
-  const city = cityValueInput.value.trim();
-
-  if (!city) {
-    alert(translations[langSelect.value].enterCity + "!");
-    return;
-  }
-
-  try {
-    const data = await fetchWeather(
-      `https://api.openweathermap.org/data/2.5/weather?q=${city}&appid=${API_KEY}&units=metric&lang=${langSelect.value}`
-    );
-
-    showWeather(data);
-    cityValueInput.value = "";
-  } catch (error) {
-    handleError(error);
-  }
-};
+// --- Events ---
+weatherBtn.onclick = async () => await getWeather(cityValueInput.value.trim());
 
 geoWeatherBtn.onclick = async () => await getGeoWeather();
 
@@ -88,7 +73,7 @@ langSelect.onchange = () => {
   applyTranslations(selectedLang);
   localStorage.setItem("weatherLang", selectedLang);
 
-  // Если погодные данные сейчас показываются — перерисовать их с новыми метками
+  // If weather data shows now - render them with new labels
   const currentWeatherJson = localStorage.getItem("weather");
   if (currentWeatherJson) {
     const currentData = JSON.parse(currentWeatherJson);
@@ -96,6 +81,7 @@ langSelect.onchange = () => {
   }
 };
 
+// --- Business logic ---
 async function getGeoWeather() {
   try {
     const position = await new Promise((resolve, reject) => {
@@ -113,22 +99,35 @@ async function getGeoWeather() {
   }
 }
 
-// --- helper: fetch wrapper ---
-async function fetchWeather(url) {
-  weatherInfo.innerHTML = `<div class="spinner-border text-light" role="status">
-  <span class="visually-hidden">Loading...</span>
-  </div>`;
-  const res = await fetch(url);
-  if (!res.ok) throw new Error(res.status);
-  const data = await res.json();
-  localStorage.setItem("weather", JSON.stringify(data));
-  return data;
+async function getWeather(city) {
+  if (!city) {
+    alert(translations[langSelect.value].enterCity + "!");
+    return;
+  }
+
+  try {
+    const data = await fetchWeather(
+      `https://api.openweathermap.org/data/2.5/weather?q=${city}&appid=${API_KEY}&units=metric&lang=${langSelect.value}`
+    );
+    localStorage.setItem("weather", JSON.stringify(data));
+    pushToHistory("searchHistory", data.name);
+    showWeather(data);
+    cityValueInput.value = "";
+  } catch (error) {
+    handleError(error);
+  }
 }
 
-// --- showWeather uses translations from current lang ---
-async function showWeather({
+// --- Render ---
+async function showWeather(data) {
+  renderWeather(data);
+  await updateBackground(data);
+  displayHistory();
+}
+
+function renderWeather({
   name,
-  weather: [{ icon, description, main }],
+  weather: [{ icon, description }],
   main: { temp, feels_like, humidity },
   wind: { speed },
 }) {
@@ -136,8 +135,23 @@ async function showWeather({
 
   const currentLang = langSelect.value;
   const t = translations[currentLang] || translations.en;
+  const h2 = document.createElement("h2");
+  h2.textContent = `${t.title} — ${name}`;
+  weatherInfo.appendChild(h2);
 
-  // ✨ NEW — загрузка фона
+  const img = document.createElement("img");
+  img.src = `https://openweathermap.org/img/wn/${icon}@2x.png`;
+  img.alt = "weather";
+  weatherInfo.appendChild(img);
+
+  weatherInfo.appendChild(createInfo("temperature", `${temp} °C`));
+  weatherInfo.appendChild(createInfo("feelsLike", `${feels_like} °C`));
+  weatherInfo.appendChild(createInfo("description", `${description}`));
+  weatherInfo.appendChild(createInfo("wind", `${speed} m/s`));
+  weatherInfo.appendChild(createInfo("humidity", `${humidity} %`));
+}
+
+async function updateBackground({ name, weather: [{ main }] }) {
   let query = name;
   const condition = main.toLowerCase();
 
@@ -150,30 +164,37 @@ async function showWeather({
   if (photoUrl) {
     setBackgroundImage(photoUrl);
   }
-
-  const h2 = document.createElement("h2");
-  h2.textContent = `${t.title} — ${name}`;
-  weatherInfo.appendChild(h2);
-
-  const img = document.createElement("img");
-  img.src = `https://openweathermap.org/img/wn/${icon}@2x.png`;
-  img.alt = "weather";
-  weatherInfo.appendChild(img);
-
-  // Используем ключи переводов, а не жесткие строки
-  weatherInfo.appendChild(createInfo("temperature", `${temp} °C`));
-  weatherInfo.appendChild(createInfo("feelsLike", `${feels_like} °C`));
-  weatherInfo.appendChild(createInfo("description", `${description}`));
-  weatherInfo.appendChild(createInfo("wind", `${speed} m/s`));
-  weatherInfo.appendChild(createInfo("humidity", `${humidity} %`));
 }
 
-// createInfo принимает ключ перевода
+function displayHistory() {
+  history.innerHTML = "";
+  const searchHistory = getHistory("searchHistory");
+  for (const city of searchHistory) {
+    const btnHistory = document.createElement("button");
+    btnHistory.textContent = city;
+    btnHistory.style.margin = "5px";
+    btnHistory.onclick = async () => await getWeather(city);
+    history.appendChild(btnHistory);
+  }
+}
+
 function createInfo(labelKey, value) {
   const label = getLabel(labelKey) || labelKey;
   const p = document.createElement("p");
   p.textContent = `${label}: ${value}`;
   return p;
+}
+
+// --- Helpers ---
+async function fetchWeather(url) {
+  weatherInfo.innerHTML = `<div class="spinner-border text-light" role="status">
+  <span class="visually-hidden">Loading...</span>
+  </div>`;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(res.status);
+  const data = await res.json();
+
+  return data;
 }
 
 function handleError(error) {
@@ -203,7 +224,6 @@ function applyTranslations(lang) {
       (translations.en && translations.en[key]) ||
       key;
 
-    // NOTE: HTMLInputElement.placeholder needs to be set differently
     if (el.tagName === "INPUT") {
       el.placeholder = translation;
     } else {
@@ -221,10 +241,10 @@ async function fetchCityImage(city) {
   const data = await res.json();
 
   if (data.results.length > 0) {
-    return data.results[0].urls.regular + "&fm=jpg"; // можно full / raw
+    return data.results[0].urls.regular + "&fm=jpg";
   }
 
-  return "https://images.unsplash.com/photo-1503264116251-35a269479413&fm=jpg"; // если не нашли
+  return "https://images.unsplash.com/photo-1503264116251-35a269479413&fm=jpg";
 }
 
 function setBackgroundImage(photoUrl) {
@@ -264,4 +284,23 @@ function setIOSBackground(photoUrl) {
   };
 
   bg.src = photoUrl;
+}
+
+function pushToHistory(key, value, limit = 3) {
+  const arr = getHistory(key);
+
+  if (!arr.includes(value)) {
+    arr.push(value);
+  }
+
+  if (arr.length > limit) {
+    arr.shift();
+  }
+
+  localStorage.setItem(key, JSON.stringify(arr));
+}
+
+function getHistory(key) {
+  const raw = localStorage.getItem(key);
+  return raw ? JSON.parse(raw) : [];
 }
